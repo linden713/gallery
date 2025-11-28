@@ -35,6 +35,7 @@ import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 fun LlmChatScreen(
   modelManagerViewModel: ModelManagerViewModel,
   navigateUp: () -> Unit,
+  onSettingsClicked: () -> Unit,
   modifier: Modifier = Modifier,
   viewModel: LlmChatViewModel = hiltViewModel(),
 ) {
@@ -43,6 +44,7 @@ fun LlmChatScreen(
     modelManagerViewModel = modelManagerViewModel,
     taskId = BuiltInTaskId.LLM_CHAT,
     navigateUp = navigateUp,
+    onSettingsClicked = onSettingsClicked,
     modifier = modifier,
   )
 }
@@ -85,6 +87,7 @@ fun ChatViewWrapper(
   modelManagerViewModel: ModelManagerViewModel,
   taskId: String,
   navigateUp: () -> Unit,
+  onSettingsClicked: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -159,6 +162,7 @@ fun ChatViewWrapper(
     showStopButtonInInputWhenInProgress = true,
     onStopButtonClicked = { model -> viewModel.stopResponse(model = model) },
     navigateUp = navigateUp,
+    onSettingsClicked = onSettingsClicked,
     modifier = modifier,
   )
 }

@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MapsUgc
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -71,12 +72,14 @@ fun ModelPageAppBar(
   modifier: Modifier = Modifier,
   isResettingSession: Boolean = false,
   onResetSessionClicked: (Model) -> Unit = {},
+
   canShowResetSessionButton: Boolean = false,
+  onMenuClicked: (() -> Unit)? = null,
   onConfigChanged: (oldConfigValues: Map<String, Any>, newConfigValues: Map<String, Any>) -> Unit =
     { _, _ ->
     },
 ) {
-  var showConfigDialog by remember { mutableStateOf(false) }
+
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val context = LocalContext.current
   val curDownloadStatus = modelManagerUiState.modelDownloadStatus[model.name]
@@ -134,122 +137,17 @@ fun ModelPageAppBar(
     },
     // The config button for the model (if existed).
     actions = {
-      val downloadSucceeded = curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
-      val showConfigButton = model.configs.isNotEmpty() && downloadSucceeded
-      val showResetSessionButton = canShowResetSessionButton && downloadSucceeded
-      Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-        var configButtonOffset = 0.dp
-        if (showConfigButton && canShowResetSessionButton) {
-          configButtonOffset = (-40).dp
-        }
-        if (showConfigButton) {
-          val enableConfigButton = !isModelInitializing && !inProgress && isModelInitialized
-          IconButton(
-            onClick = { showConfigDialog = true },
-            enabled = enableConfigButton,
-            modifier =
-              Modifier.offset(x = configButtonOffset).alpha(if (!enableConfigButton) 0.5f else 1f),
-          ) {
-            Icon(
-              imageVector = Icons.Rounded.Tune,
-              contentDescription = stringResource(R.string.cd_model_settings_icon),
-              tint = MaterialTheme.colorScheme.onSurface,
-              modifier = Modifier.size(20.dp),
-            )
-          }
-        }
-        if (showResetSessionButton) {
-          if (isResettingSession) {
-            CircularProgressIndicator(
-              trackColor = MaterialTheme.colorScheme.surfaceVariant,
-              strokeWidth = 2.dp,
-              modifier = Modifier.size(16.dp),
-            )
-          } else {
-            val enableResetButton = !isModelInitializing && !modelPreparing && isModelInitialized
-            IconButton(
-              onClick = { onResetSessionClicked(model) },
-              enabled = enableResetButton,
-              modifier = Modifier.alpha(if (!enableResetButton) 0.5f else 1f),
-            ) {
-              Box(
-                modifier =
-                  Modifier.size(32.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainer),
-                contentAlignment = Alignment.Center,
-              ) {
-                Icon(
-                  imageVector = Icons.Rounded.MapsUgc,
-                  contentDescription = stringResource(R.string.cd_reset_session_icon),
-                  tint = MaterialTheme.colorScheme.onSurface,
-                  modifier = Modifier.size(20.dp),
-                )
-              }
-            }
-          }
+      if (onMenuClicked != null) {
+        IconButton(onClick = onMenuClicked) {
+          Icon(
+            imageVector = Icons.Rounded.Menu,
+            contentDescription = stringResource(R.string.cd_menu_icon),
+            tint = MaterialTheme.colorScheme.onSurface,
+          )
         }
       }
     },
   )
 
-  // Config dialog.
-  if (showConfigDialog) {
-    ConfigDialog(
-      title = "Model configs",
-      configs = model.configs,
-      initialValues = model.configValues,
-      onDismissed = { showConfigDialog = false },
-      onOk = { curConfigValues ->
-        // Hide config dialog.
-        showConfigDialog = false
 
-        // Check if the configs are changed or not. Also check if the model needs to be
-        // re-initialized.
-        var same = true
-        var needReinitialization = false
-        for (config in model.configs) {
-          val key = config.key.label
-          val oldValue =
-            convertValueToTargetType(
-              value = model.configValues.getValue(key),
-              valueType = config.valueType,
-            )
-          val newValue =
-            convertValueToTargetType(
-              value = curConfigValues.getValue(key),
-              valueType = config.valueType,
-            )
-          if (oldValue != newValue) {
-            same = false
-            if (config.needReinitialization) {
-              needReinitialization = true
-            }
-            break
-          }
-        }
-        if (same) {
-          return@ConfigDialog
-        }
-
-        // Save the config values to Model.
-        val oldConfigValues = model.configValues
-        model.configValues = curConfigValues
-        modelManagerViewModel.updateConfigValuesUpdateTrigger()
-
-        // Force to re-initialize the model with the new configs.
-        if (needReinitialization) {
-          modelManagerViewModel.initializeModel(
-            context = context,
-            task = task,
-            model = model,
-            force = true,
-          )
-        }
-
-        // Notify.
-        onConfigChanged(oldConfigValues, model.configValues)
-      },
-    )
-  }
 }

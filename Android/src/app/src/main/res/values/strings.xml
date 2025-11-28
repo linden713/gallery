@@ -25,7 +25,7 @@
     <item quantity="one">%d model available</item>
     <item quantity="other">%d models available</item>
   </plurals>
-  <string name="model_list_recommended_models_title" translatable="false">Recommended models</string>
+  <string name="model_list_recommended_models_title" translatable="false">Default models</string>
   <string name="model_list_imported_models_title" translatable="false">Imported models</string>
   <string name="model_manager" translatable="false">Model Manager</string>
   <string name="download" translatable="false">Download</string>

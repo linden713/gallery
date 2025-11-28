@@ -42,8 +42,15 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +76,25 @@ import com.google.ai.edge.gallery.ui.common.ModelPageAppBar
 import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 import kotlinx.coroutines.Dispatchers
+import com.google.ai.edge.gallery.ui.common.ConfigDialog
+import com.google.ai.edge.gallery.data.convertValueToTargetType
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.launch
 
 private const val TAG = "AGChatView"
@@ -81,6 +108,7 @@ private const val TAG = "AGChatView"
  * manages model initialization, cleanup, and download status, and handles navigation and system
  * back gestures.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatView(
   task: Task,
@@ -95,19 +123,34 @@ fun ChatView(
   onStreamImageMessage: (Model, ChatMessageImage) -> Unit = { _, _ -> },
   onStopButtonClicked: (Model) -> Unit = {},
   showStopButtonInInputWhenInProgress: Boolean = false,
+  onSettingsClicked: () -> Unit = {},
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val modelManagerUiState by modelManagerViewModel.uiState.collectAsState()
   val selectedModel = modelManagerUiState.selectedModel
+
+  // History selection state
+  var isSelectionMode by remember { mutableStateOf(false) }
+  var selectedHistoryIds by remember { mutableStateOf(setOf<String>()) }
 
   // Image viewer related.
   var selectedImageIndex by remember { mutableIntStateOf(-1) }
   var allImageViewerImages by remember { mutableStateOf<List<Bitmap>>(listOf()) }
   var showImageViewer by remember { mutableStateOf(false) }
 
+  // Config dialog related.
+  var showConfigDialog by remember { mutableStateOf(false) }
+  val curDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
+  val modelInitializationStatus = modelManagerUiState.modelInitializationStatus[selectedModel.name]
+  val isModelInitializing =
+    modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING
+  val isModelInitialized =
+    modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZED
+
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   var navigatingUp by remember { mutableStateOf(false) }
+  val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
   val handleNavigateUp = {
     navigatingUp = true
@@ -115,14 +158,17 @@ fun ChatView(
 
     // clean up all models.
     scope.launch(Dispatchers.Default) {
+      // Ensure drawer is closed
+      drawerState.close()
       for (model in task.models) {
         modelManagerViewModel.cleanupModel(context = context, task = task, model = model)
       }
     }
   }
 
+
+
   // Initialize model when model/download state changes.
-  val curDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
   LaunchedEffect(curDownloadStatus, selectedModel.name) {
     if (!navigatingUp) {
       if (curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
@@ -133,16 +179,137 @@ fun ChatView(
   }
 
   // Handle system's edge swipe.
-  BackHandler {
-    val modelInitializationStatus =
-      modelManagerUiState.modelInitializationStatus[selectedModel.name]
-    val isModelInitializing =
-      modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING
-    if (!isModelInitializing && !uiState.inProgress) {
-      handleNavigateUp()
-    }
-  }
+  // Moved inside Scaffold/Content to ensure correct lifecycle/composition order
 
+
+  // Wrap in Surface to ensure solid background during transitions
+  androidx.compose.material3.Surface(
+      modifier = Modifier.fillMaxSize(),
+      color = MaterialTheme.colorScheme.background
+  ) {
+      ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = !navigatingUp,
+        drawerContent = {
+          ModalDrawerSheet(modifier = Modifier.fillMaxWidth(0.75f)) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+          // Top section
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val downloadSucceeded = curDownloadStatus?.status == ModelDownloadStatusType.SUCCEEDED
+            val showResetSessionButton = true // Always show, but maybe disabled
+            val showConfigButton = selectedModel.configs.isNotEmpty() && downloadSucceeded
+
+            if (showResetSessionButton) {
+               val enableResetButton = !isModelInitializing && !uiState.preparing && isModelInitialized
+               NavigationDrawerItem(
+                 label = { Text(text = "New Chat") },
+                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+                 selected = false,
+                 onClick = {
+                   if (enableResetButton) {
+                     scope.launch { drawerState.close() }
+                     viewModel.startNewChat(selectedModel)
+                     onResetSessionClicked(selectedModel)
+                   }
+                 },
+                 modifier = Modifier.alpha(if (enableResetButton) 1f else 0.5f)
+               )
+            }
+
+            if (showConfigButton) {
+              val enableConfigButton = !isModelInitializing && !uiState.inProgress && isModelInitialized
+              NavigationDrawerItem(
+                label = { Text(text = "Model Config") },
+                icon = { Icon(Icons.Rounded.Tune, contentDescription = null) },
+                selected = false,
+                onClick = {
+                  if (enableConfigButton) {
+                    scope.launch { drawerState.close() }
+                    showConfigDialog = true
+                  }
+                },
+                modifier = Modifier.alpha(if (enableConfigButton) 1f else 0.5f)
+              )
+            }
+          }
+
+          HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+          
+          HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+          
+          Row(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+          ) {
+              Text(
+                  text = if (isSelectionMode) "${selectedHistoryIds.size} Selected" else "History",
+                  style = MaterialTheme.typography.titleSmall,
+                  color = MaterialTheme.colorScheme.primary
+              )
+              
+              if (isSelectionMode) {
+                  IconButton(
+                      onClick = {
+                          viewModel.deleteConversations(selectedHistoryIds)
+                          isSelectionMode = false
+                          selectedHistoryIds = emptySet()
+                      }
+                  ) {
+                      Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+                  }
+              }
+          }
+
+          LazyColumn(modifier = Modifier.weight(1f)) {
+              items(uiState.history) { conversation ->
+                  val isSelected = selectedHistoryIds.contains(conversation.id)
+                  val isCurrent = conversation.id == uiState.currentConversationId
+                  
+                  HistoryItem(
+                      title = conversation.title,
+                      isSelected = isSelected,
+                      isCurrent = isCurrent,
+                      isSelectionMode = isSelectionMode,
+                      onClick = {
+                          if (isSelectionMode) {
+                              selectedHistoryIds = if (isSelected) {
+                                  selectedHistoryIds - conversation.id
+                              } else {
+                                  selectedHistoryIds + conversation.id
+                              }
+                              if (selectedHistoryIds.isEmpty()) {
+                                  isSelectionMode = false
+                              }
+                          } else {
+                              scope.launch { drawerState.close() }
+                              viewModel.loadConversation(conversation, selectedModel)
+                          }
+                      },
+                      onLongClick = {
+                          if (!isSelectionMode) {
+                              isSelectionMode = true
+                              selectedHistoryIds = setOf(conversation.id)
+                          }
+                      }
+                  )
+              }
+          }
+
+          // Bottom section
+          NavigationDrawerItem(
+            label = { Text(text = "Settings") },
+            icon = { Icon(Icons.Rounded.Settings, contentDescription = null) },
+            selected = false,
+            onClick = {
+              scope.launch { drawerState.close() }
+              onSettingsClicked()
+            }
+          )
+        }
+      }
+    }
+  ) {
   Scaffold(
     modifier = modifier,
     topBar = {
@@ -150,11 +317,11 @@ fun ChatView(
         task = task,
         model = selectedModel,
         modelManagerViewModel = modelManagerViewModel,
-        canShowResetSessionButton = true,
+        canShowResetSessionButton = false, // Moved to sidebar
         isResettingSession = uiState.isResettingSession,
         inProgress = uiState.inProgress,
         modelPreparing = uiState.preparing,
-        onResetSessionClicked = onResetSessionClicked,
+        onResetSessionClicked = {}, // Handled in sidebar
         onConfigChanged = { old, new ->
           viewModel.addConfigChangedMessage(
             oldConfigValues = old,
@@ -169,12 +336,27 @@ fun ChatView(
           }
           modelManagerViewModel.selectModel(model = curModel)
         },
+        onMenuClicked = {
+          scope.launch {
+            drawerState.open()
+          }
+        },
       )
     },
   ) { innerPadding ->
     Box {
       // val curSelectedModel = task.models[pageIndex]
       val curModelDownloadStatus = modelManagerUiState.modelDownloadStatus[selectedModel.name]
+      
+      BackHandler {
+        val modelInitializationStatus =
+          modelManagerUiState.modelInitializationStatus[selectedModel.name]
+        val isModelInitializing =
+          modelInitializationStatus?.status == ModelInitializationStatusType.INITIALIZING
+        if (!isModelInitializing && !uiState.inProgress) {
+          handleNavigateUp()
+        }
+      }
 
       Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
         AnimatedContent(
@@ -265,6 +447,123 @@ fun ChatView(
       }
     }
   }
+
+  // Config dialog.
+  if (showConfigDialog) {
+    ConfigDialog(
+      title = "Model configs",
+      configs = selectedModel.configs,
+      initialValues = selectedModel.configValues,
+      onDismissed = { showConfigDialog = false },
+      onOk = { curConfigValues ->
+        // Hide config dialog.
+        showConfigDialog = false
+
+        // Check if the configs are changed or not. Also check if the model needs to be
+        // re-initialized.
+        var same = true
+        var needReinitialization = false
+        for (config in selectedModel.configs) {
+          val key = config.key.label
+          val oldValue =
+            convertValueToTargetType(
+              value = selectedModel.configValues.getValue(key),
+              valueType = config.valueType,
+            )
+          val newValue =
+            convertValueToTargetType(
+              value = curConfigValues.getValue(key),
+              valueType = config.valueType,
+            )
+          if (oldValue != newValue) {
+            same = false
+            if (config.needReinitialization) {
+              needReinitialization = true
+            }
+            break
+          }
+        }
+        if (same) {
+          return@ConfigDialog
+        }
+
+        // Save the config values to Model.
+        val oldConfigValues = selectedModel.configValues
+        selectedModel.configValues = curConfigValues
+        modelManagerViewModel.updateConfigValuesUpdateTrigger()
+
+        // Force to re-initialize the model with the new configs.
+        if (needReinitialization) {
+          modelManagerViewModel.initializeModel(
+            context = context,
+            task = task,
+            model = selectedModel,
+            force = true,
+          )
+        }
+
+        // Notify.
+        viewModel.addConfigChangedMessage(
+            oldConfigValues = oldConfigValues,
+            newConfigValues = selectedModel.configValues,
+            model = selectedModel,
+          )
+      },
+    )
+  }
+  }
+  }
+  }
+
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun HistoryItem(
+    title: String,
+    isSelected: Boolean,
+    isCurrent: Boolean,
+    isSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val backgroundColor = if (isCurrent && !isSelectionMode) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+    val contentColor = if (isCurrent && !isSelectionMode) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .background(backgroundColor, shape = MaterialTheme.shapes.extraSmall) // NavigationDrawerItem defaults to extraSmall or small
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(horizontal = 16.dp, vertical = 12.dp), // Inner padding
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (isSelectionMode) {
+            Icon(
+                if (isSelected) Icons.Rounded.CheckCircle else Icons.Outlined.Circle,
+                contentDescription = null,
+                tint = if (isSelected) MaterialTheme.colorScheme.primary else contentColor
+            )
+        } else {
+            Icon(
+                Icons.Rounded.ChatBubbleOutline,
+                contentDescription = null,
+                tint = contentColor
+            )
+        }
+        
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor,
+            maxLines = 1
+        )
+    }
+
 }
 
 // @Preview

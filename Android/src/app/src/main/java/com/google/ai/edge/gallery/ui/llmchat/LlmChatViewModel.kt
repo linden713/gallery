@@ -37,6 +37,8 @@ import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.ai.edge.litertlm.ExperimentalApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import com.google.ai.edge.gallery.data.HistoryRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -161,6 +163,9 @@ open class LlmChatViewModelBase() : ChatViewModel() {
                     ),
                 )
               }
+              
+              // Save conversation when inference is complete
+              saveCurrentConversation(model)
             }
           },
           cleanUpListener = {
@@ -280,8 +285,32 @@ open class LlmChatViewModelBase() : ChatViewModel() {
   }
 }
 
-@HiltViewModel class LlmChatViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel
+class LlmChatViewModel @Inject constructor(
+    historyRepository: HistoryRepository,
+    @ApplicationContext context: Context
+) : LlmChatViewModelBase() {
+    init {
+        setDependencies(historyRepository, context)
+    }
+}
 
-@HiltViewModel class LlmAskImageViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel
+class LlmAskImageViewModel @Inject constructor(
+    historyRepository: HistoryRepository,
+    @ApplicationContext context: Context
+) : LlmChatViewModelBase() {
+    init {
+        setDependencies(historyRepository, context)
+    }
+}
 
-@HiltViewModel class LlmAskAudioViewModel @Inject constructor() : LlmChatViewModelBase()
+@HiltViewModel
+class LlmAskAudioViewModel @Inject constructor(
+    historyRepository: HistoryRepository,
+    @ApplicationContext context: Context
+) : LlmChatViewModelBase() {
+    init {
+        setDependencies(historyRepository, context)
+    }
+}

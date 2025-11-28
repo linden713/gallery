@@ -246,36 +246,6 @@ fun ModelList(
         }
       }
 
-      // Title for recommended models.
-      if (!models.isEmpty())
-        item(key = "recommendedModelsTitle") {
-          Text(
-            stringResource(R.string.model_list_recommended_models_title),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge,
-            modifier =
-              Modifier.padding(horizontal = 16.dp, vertical = 8.dp).graphicsLayer {
-                alpha = modelListProgress
-                translationY = (CONTENT_ANIMATION_OFFSET * (1 - modelListProgress)).toPx()
-              },
-          )
-        }
-
-      // List of models within a task.
-      items(items = models) { model ->
-        ModelItem(
-          model = model,
-          task = task,
-          modelManagerViewModel = modelManagerViewModel,
-          onModelClicked = onModelClicked,
-          modifier =
-            Modifier.graphicsLayer {
-              alpha = modelListProgress
-              translationY = (CONTENT_ANIMATION_OFFSET * (1 - modelListProgress)).toPx()
-            },
-        )
-      }
-
       // Title for imported models.
       if (importedModels.isNotEmpty()) {
         item(key = "importedModelsTitle") {
@@ -285,7 +255,7 @@ fun ModelList(
             style = MaterialTheme.typography.labelLarge,
             modifier =
               Modifier.padding(horizontal = 16.dp)
-                .padding(top = 32.dp, bottom = 8.dp)
+                .padding(top = 8.dp, bottom = 8.dp) // Adjusted padding
                 .graphicsLayer {
                   alpha = modelListProgress
                   translationY = (CONTENT_ANIMATION_OFFSET * (1 - modelListProgress)).toPx()
@@ -309,6 +279,38 @@ fun ModelList(
               },
           )
         }
+      }
+
+      // Title for recommended models.
+      if (!models.isEmpty())
+        item(key = "recommendedModelsTitle") {
+          Text(
+            stringResource(R.string.model_list_recommended_models_title),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelLarge,
+            modifier =
+              Modifier.padding(horizontal = 16.dp)
+                  .padding(top = if (importedModels.isNotEmpty()) 32.dp else 8.dp, bottom = 8.dp) // Add top padding if imported models exist
+                  .graphicsLayer {
+                alpha = modelListProgress
+                translationY = (CONTENT_ANIMATION_OFFSET * (1 - modelListProgress)).toPx()
+              },
+          )
+        }
+
+      // List of models within a task.
+      items(items = models) { model ->
+        ModelItem(
+          model = model,
+          task = task,
+          modelManagerViewModel = modelManagerViewModel,
+          onModelClicked = onModelClicked,
+          modifier =
+            Modifier.graphicsLayer {
+              alpha = modelListProgress
+              translationY = (CONTENT_ANIMATION_OFFSET * (1 - modelListProgress)).toPx()
+            },
+        )
       }
 
       item(key = "paddingBottom") { Spacer(modifier = Modifier.height(40.dp)) }

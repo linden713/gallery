@@ -75,7 +75,9 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "AGGalleryNavGraph"
 private const val ROUTE_PLACEHOLDER = "placeholder"
+
 private const val ROUTE_MODEL = "route_model"
+private const val ROUTE_SETTINGS = "route_settings"
 private const val ENTER_ANIMATION_DURATION_MS = 500
 private val ENTER_ANIMATION_EASING = EaseOutExpo
 private const val ENTER_ANIMATION_DELAY_MS = 100
@@ -229,6 +231,7 @@ fun GalleryNavHost(
                 CustomTaskDataForBuiltinTask(
                   modelManagerViewModel = modelManagerViewModel,
                   onNavUp = { navController.navigateUp() },
+                  onSettingsClicked = { navController.navigate(ROUTE_SETTINGS) },
                 )
             )
           } else {

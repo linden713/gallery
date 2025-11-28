@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2025 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<resources>
+  <string name="app_name" translatable="false">Google AI Edge Gallery</string>
+  <string name="app_name_first_part" translatable="false">Google AI</string>
+  <string name="app_name_second_part" translatable="false">Edge Gallery</string>
+  <string name="app_intro" translatable="false">探索来自 Google AI Edge 的惊人端侧模型</string>
+  <string name="best_overall" translatable="false">综合最佳</string>
+  <plurals name="model_list_number_of_models_available" translatable="false">
+    <item quantity="one">%d 个模型可用</item>
+    <item quantity="other">%d 个模型可用</item>
+  </plurals>
+  <string name="model_list_recommended_models_title" translatable="false">默认模型</string>
+  <string name="model_list_imported_models_title" translatable="false">导入的模型</string>
+  <string name="model_manager" translatable="false">模型管理器</string>
+  <string name="download" translatable="false">下载</string>
+  <string name="downloaded_size" translatable="false">已下载 %1$s</string>
+  <string name="cancel" translatable="false">取消</string>
+  <string name="category_unlabeled" translatable="false">未标记</string>
+  <string name="category_llm" translatable="false">大语言模型</string>
+  <string name="category_classical_ml" translatable="false">经典机器学习</string>
+  <string name="category_experimental" translatable="false">实验性</string>
+  <string name="checking_access" translatable="false">正在检查访问权限...</string>
+  <string name="ok" translatable="false">确定</string>
+  <string name="close" translatable="false">关闭</string>
+  <string name="confirm_delete_model_dialog_title" translatable="false">删除下载</string>
+  <string name="confirm_delete_model_dialog_content" translatable="false">您确定要删除已下载的模型 \"%s\" 吗？</string>
+  <string name="notification_title_success" translatable="false">模型下载成功</string>
+  <string name="notification_content_success" translatable="false">模型 \"%s\" 已下载</string>
+  <string name="notification_title_fail" translatable="false">模型下载失败</string>
+  <string name="notification_content_fail" translatable="false">下载模型 \"%s\" 失败</string>
+  <string name="chat_textinput_placeholder" translatable="false">输入消息…</string>
+  <string name="chat_you" translatable="false">你</string>
+  <string name="chat_llm_agent_name" translatable="false">LLM</string>
+  <string name="chat_agent_agent_name" translatable="false">智能体</string>
+  <string name="chat_generic_agent_name" translatable="false">模型</string>
+  <string name="chat_generic_result_name" translatable="false">结果</string>
+  <string name="learn_more" translatable="false">了解更多</string>
+  <string name="litert_community_label" translatable="false">LiteRT 社区</string>
+  <string name="loading_model_list" translatable="false">正在加载模型列表...</string>
+  <string name="memory_warning_title" translatable="false">内存警告</string>
+  <string name="memory_warning_content" translatable="false">您选择的模型可能会超出设备的内存限制，导致应用崩溃。为了获得最佳体验，建议尝试较小的模型。</string>
+  <string name="memory_warning_proceed_anyway" translatable="false">仍然继续</string>
+  <string name="model_not_downloaded_msg" translatable="false">模型尚未下载</string>
+  <string name="model_is_initializing_msg" translatable="false">正在初始化模型…</string>
+  <string name="settings_dialog_tos_title" translatable="false">服务条款</string>
+  <string name="text_input_placeholder_text_classification" translatable="false">输入影评进行分类…</string>
+  <string name="text_image_generation_text_field_placeholder" translatable="false">输入提示词…</string>
+  <string name="text_input_placeholder_llm_chat" translatable="false">输入提示词…</string>
+  <string name="tos_dialog_title_app_name" translatable="false">Google AI Edge Gallery 应用</string>
+  <string name="tos_dialog_title_tos" translatable="false">服务条款</string>
+  <string name="tos_dialog_view_full_tos" translatable="false">查看此应用的服务条款</string>
+  <string name="tos_dialog_view_accept_button_label" translatable="false">接受并继续</string>
+  <string name="try_it" translatable="false">试一试</string>
+  <string name="run_again" translatable="false">再次运行</string>
+  <string name="benchmark" translatable="false">运行基准测试</string>
+  <string name="warming_up" translatable="false">正在预热…</string>
+  <string name="running" translatable="false">正在运行</string>
+  <string name="enter_instruction" translatable="false">输入指令</string>
+  <string name="invalid_response" translatable="false">无效响应</string>
+  <string name="hold_down_to_talk" translatable="false">按住说话</string>
+  <string name="release_to_send" translatable="false">松开发送</string>
+  <string name="slide_up_to_cancel" translatable="false">上滑取消</string>
+  <string name="listening" translatable="false">正在聆听...</string>
+  <string name="grant_record_audio_permission" translatable="false">授予录音权限</string>
+  <string name="unsupported_action" translatable="false">不支持的操作</string>
+  <string name="flashlight_on_message" translatable="false">已打开手电筒。</string>
+  <string name="flashlight_off_message" translatable="false">已关闭手电筒。</string>
+  <string name="set_screen_brightness_message" translatable="false">已将屏幕亮度设置为 %1$d%%。</string>
+  <string name="set_timer_message" translatable="false">正在设置 %1$d 秒的计时器。</string>
+  <string name="add_calendar_event_message" translatable="false">正在添加 \"团队会议 (10AM-11AM)\" 到您的日历。</string>
+  <string name="take_picture_message" translatable="false">正在打开相机应用。</string>
+  <string name="voice_to_action_title" translatable="false">语音转操作</string>
+  <string name="voice_to_action_description" translatable="false">使用简单的命令控制您的设备</string>
+  <string name="conversation_history" translatable="false">对话历史</string>
+  <string name="warning_no_function_call" translatable="false">未识别到功能</string>
+  <string name="snackbar_no_function_call" translatable="false">未识别到功能。请查看历史记录了解详情。</string>
+
+  <string name="function_name" translatable="false">功能名称</string>
+  <plurals name="parameter" translatable="false">
+    <item quantity="one">参数</item>
+    <item quantity="other">参数</item>
+  </plurals>
+  <string name="prompt_template_label_flash_on" translatable="false">打开手电筒</string>
+  <string name="prompt_template_label_flash_off" translatable="false">关闭手电筒</string>
+  <string name="prompt_template_label_create_contact" translatable="false">创建联系人</string>
+  <string name="prompt_template_label_send_email" translatable="false">发送邮件</string>
+  <string name="prompt_template_label_show_location_on_map" translatable="false">在地图上显示位置</string>
+  <string name="prompt_template_label_open_wifi_settings" translatable="false">打开 WIFI 设置</string>
+
+  <!-- Accessibility strings -->
+  <string name="cd_import_model_button">导入模型</string>
+  <string name="cd_task_card">%1$s 任务，包含 %2$d 个模型</string>
+  <string name="cd_error">错误</string>
+  <string name="cd_import_model_from_local_file_button">从本地文件导入模型</string>
+  <string name="cd_navigate_back_icon">返回</string>
+  <string name="cd_app_settings_icon">设置</string>
+  <string name="cd_done_icon">完成</string>
+  <string name="cd_collapse_icon">折叠</string>
+  <string name="cd_expand_icon">展开</string>
+  <string name="cd_stop_icon">停止</string>
+  <string name="cd_delete_icon">删除</string>
+  <string name="cd_close_icon">关闭</string>
+  <string name="cd_selected_icon">已选择</string>
+  <string name="cd_model_settings_icon">模型设置</string>
+  <string name="cd_reset_session_icon">重置会话</string>
+  <string name="cd_change_model">当前模型是 %1$s。点击更改模型。</string>
+  <string name="cd_close_image_viewer_icon">关闭图片查看器</string>
+  <string name="cd_copy_to_clipboard_icon">复制到剪贴板</string>
+  <string name="cd_prompt_input_text_field">提示词输入</string>
+  <string name="cd_send_prompt_icon">发送提示词</string>
+  <string name="cd_model_response_text">模型响应文本</string>
+  <string name="cd_clear_input_history_icon">清除输入历史</string>
+  <string name="cd_delete_input_history_entry_icon">删除输入历史条目</string>
+  <string name="cd_content_input_field">内容输入</string>
+  <string name="cd_add_example_prompt_icon">添加示例提示词</string>
+  <string name="cd_image_thumbnail">图片缩略图</string>
+  <string name="cd_user_image">用户图片 %1$d</string>
+  <string name="cd_user_image_in_group">用户图片 %1$d / %2$d</string>
+  <string name="cd_add_content_icon">添加内容</string>
+  <string name="cd_camera_shutter_icon">快门</string>
+  <string name="cd_toggle_front_back_camera_icon">切换前后摄像头</string>
+  <string name="cd_play_audio_icon">播放音频</string>
+  <string name="cd_stop_playback_icon">停止播放</string>
+  <string name="cd_send_audio_clip_icon">发送音频片段</string>
+  <string name="cd_start_recording">开始录音</string>
+  <string name="cd_downloaded_icon">已下载</string>
+  <string name="cd_not_downloaded_icon">未下载</string>
+  <string name="cd_downloading_icon">正在下载</string>
+  <string name="cd_download_failed_icon">下载失败</string>
+  <string name="cd_chat_panel">聊天面板</string>
+  <string name="cd_switch_to_keyboard">切换到键盘</string>
+  <string name="cd_switch_to_voice">切换到语音</string>
+  <string name="cd_show_history">显示历史</string>
+  <string name="cd_more_options">更多选项</string>
+</resources>

@@ -20,9 +20,18 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.google.ai.edge.gallery.common.processLlmResponse
 import com.google.ai.edge.gallery.data.Model
+import com.google.ai.edge.gallery.data.Conversation
+import com.google.ai.edge.gallery.data.HistoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.UUID
+import android.content.Context
+import com.google.ai.edge.gallery.ui.common.chat.ChatSide
+import com.google.ai.edge.gallery.ui.common.chat.ChatMessageText
+import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 
 private const val TAG = "AGChatViewModel"
 
@@ -49,12 +58,147 @@ data class ChatUiState(
    * showing the stats below it.
    */
   val showingStatsByModel: Map<String, MutableSet<ChatMessage>> = mapOf(),
+
+  /** The list of saved conversations. */
+  val history: List<Conversation> = emptyList(),
+  
+  /** The ID of the current conversation. */
+  val currentConversationId: String? = null
 )
 
 /** ViewModel responsible for managing the chat UI state and handling chat-related operations. */
 abstract class ChatViewModel() : ViewModel() {
   private val _uiState = MutableStateFlow(createUiState())
   val uiState = _uiState.asStateFlow()
+  
+  // This will be injected in the concrete classes
+  protected open var historyRepository: HistoryRepository? = null
+  protected open var applicationContext: Context? = null
+
+  fun setDependencies(repository: HistoryRepository, context: Context) {
+      this.historyRepository = repository
+      this.applicationContext = context
+      loadHistory()
+  }
+
+  private fun loadHistory() {
+      val repo = historyRepository ?: return
+      val context = applicationContext ?: return
+      viewModelScope.launch {
+          val history = repo.loadHistory(context)
+          _uiState.update { it.copy(history = history.sortedByDescending { c -> c.timestamp }) }
+      }
+  }
+
+  fun startNewChat(model: Model) {
+      clearAllMessages(model)
+      _uiState.update { it.copy(currentConversationId = UUID.randomUUID().toString()) }
+  }
+
+  fun loadConversation(conversation: Conversation, model: Model) {
+      val repo = historyRepository ?: return
+      
+      // Clear current messages
+      clearAllMessages(model)
+      
+      // Load messages from conversation
+      val messages = conversation.messages.map { repo.mapToChatMessage(it) }
+      
+      val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
+      newMessagesByModel[model.name] = messages.toMutableList()
+      
+      _uiState.update { 
+          it.copy(
+              messagesByModel = newMessagesByModel,
+              currentConversationId = conversation.id
+          ) 
+      }
+  }
+
+  fun saveCurrentConversation(model: Model) {
+      val repo = historyRepository ?: return
+      val context = applicationContext ?: return
+      
+      val messages = _uiState.value.messagesByModel[model.name] ?: return
+      if (messages.isEmpty()) return
+
+      val firstUserMessage = messages.firstOrNull { it.side == ChatSide.USER && it is ChatMessageText } as? ChatMessageText
+      val title = firstUserMessage?.content?.take(30) ?: "New Chat"
+      
+      val serializableMessages = messages.mapNotNull { repo.mapToSerializable(it) }
+      
+
+      
+      if (serializableMessages.isEmpty()) return
+
+      // Optimistically update currentConversationId if it's null to prevent race conditions
+      // where multiple saves (e.g. from addMessage) generate different IDs.
+      var currentId = _uiState.value.currentConversationId
+      if (currentId == null) {
+          currentId = UUID.randomUUID().toString()
+          _uiState.update { it.copy(currentConversationId = currentId) }
+      }
+      
+      val conversation = Conversation(
+          id = currentId!!,
+          title = title,
+          messages = serializableMessages,
+          timestamp = System.currentTimeMillis(),
+          modelName = model.name
+      )
+
+      viewModelScope.launch {
+          val currentHistory = _uiState.value.history.toMutableList()
+          val existingIndex = currentHistory.indexOfFirst { it.id == currentId }
+          
+          if (existingIndex != -1) {
+              currentHistory[existingIndex] = conversation
+          } else {
+              currentHistory.add(0, conversation)
+          }
+          
+          // Sort by timestamp desc
+          currentHistory.sortByDescending { it.timestamp }
+          
+          repo.saveHistory(context, currentHistory)
+          
+          _uiState.update { 
+              it.copy(
+                  history = currentHistory,
+                  // currentConversationId is already set
+              ) 
+          }
+      }
+  }
+
+  fun deleteConversations(ids: Set<String>) {
+      val repo = historyRepository ?: return
+      val context = applicationContext ?: return
+      
+      viewModelScope.launch {
+          repo.deleteConversations(context, ids)
+          
+          // Reload history to update UI
+          val history = repo.loadHistory(context)
+          
+          // If current conversation was deleted, clear it
+          var currentId = _uiState.value.currentConversationId
+          if (ids.contains(currentId)) {
+              currentId = null
+              // Optionally clear messages for the current model if needed, 
+              // but for now just resetting the ID is enough to indicate "new chat" state visually if we wanted.
+              // However, usually we might want to start a new chat or just leave the screen as is.
+              // Let's just update the history list.
+          }
+          
+          _uiState.update { 
+              it.copy(
+                  history = history.sortedByDescending { c -> c.timestamp },
+                  currentConversationId = currentId
+              ) 
+          }
+      }
+  }
 
   fun addMessage(model: Model, message: ChatMessage) {
     val newMessagesByModel = _uiState.value.messagesByModel.toMutableMap()
@@ -66,6 +210,11 @@ abstract class ChatViewModel() : ViewModel() {
     }
     newMessages.add(message)
     _uiState.update { _uiState.value.copy(messagesByModel = newMessagesByModel) }
+    
+    // Auto-save if it's a user message or a completed agent response (simplified trigger)
+    if (message.side == ChatSide.USER || message.side == ChatSide.AGENT) {
+        saveCurrentConversation(model)
+    }
   }
 
   fun insertMessageAfter(model: Model, anchorMessage: ChatMessage, messageToAdd: ChatMessage) {
