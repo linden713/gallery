@@ -191,7 +191,11 @@ open class LlmChatViewModelBase() : ChatViewModel() {
     viewModelScope.launch(Dispatchers.Default) {
       setInProgress(false)
       val instance = model.instance as LlmModelInstance
-      instance.conversation.cancelProcess()
+      try {
+        instance.conversation.cancelProcess()
+      } catch (e: IllegalStateException) {
+        Log.d(TAG, "Failed to cancel process. Conversation might be closed already.")
+      }
     }
   }
 
@@ -205,10 +209,12 @@ open class LlmChatViewModelBase() : ChatViewModel() {
         try {
           val supportImage =
             model.llmSupportImage &&
-              task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_ASK_IMAGE
+              (task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_ASK_IMAGE ||
+                task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_CHAT)
           val supportAudio =
             model.llmSupportAudio &&
-              task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_ASK_AUDIO
+              (task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_ASK_AUDIO ||
+                task.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_CHAT)
           LlmChatModelHelper.resetConversation(
             model = model,
             supportImage = supportImage,

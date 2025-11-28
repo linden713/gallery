@@ -1,0 +1,309 @@
+/*
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.google.ai.edge.gallery.ui.modelmanager
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.NoteAdd
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.google.ai.edge.gallery.GalleryTopAppBar
+import com.google.ai.edge.gallery.R
+import com.google.ai.edge.gallery.data.Model
+import com.google.ai.edge.gallery.data.Task
+import com.google.ai.edge.gallery.proto.ImportedModel
+import com.google.ai.edge.gallery.ui.home.ModelImportDialog
+import com.google.ai.edge.gallery.ui.home.ModelImportingDialog
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private const val TAG = "DefaultModelManager"
+
+/**
+ * A specialized ModelManager screen that serves as the default home screen.
+ * It removes the back navigation and adds "Import Model" functionality.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DefaultModelManager(
+    task: Task,
+    viewModel: ModelManagerViewModel,
+    onModelClicked: (Model) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Import Model States
+    var showImportModelSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    var showUnsupportedFileTypeDialog by remember { mutableStateOf(false) }
+    var showUnsupportedWebModelDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var showImportingDialog by remember { mutableStateOf(false) }
+    val selectedLocalModelFileUri = remember { mutableStateOf<Uri?>(null) }
+    val selectedImportedModelInfo = remember { mutableStateOf<ImportedModel?>(null) }
+
+    val filePickerLauncher: ActivityResultLauncher<Intent> =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    val fileName = getFileName(context = context, uri = uri)
+                    Log.d(TAG, "Selected file: $fileName")
+                    // Show warning for model file types other than .task and .litertlm.
+                    if (fileName != null && !fileName.endsWith(".task") && !fileName.endsWith(".litertlm")) {
+                        showUnsupportedFileTypeDialog = true
+                    }
+                    // Show warning for web-only model (by checking if the file name has "-web" in it).
+                    else if (fileName != null && fileName.lowercase().contains("-web")) {
+                        showUnsupportedWebModelDialog = true
+                    } else {
+                        selectedLocalModelFileUri.value = uri
+                        showImportDialog = true
+                    }
+                } ?: run { Log.d(TAG, "No file selected or URI is null.") }
+            } else {
+                Log.d(TAG, "File picking cancelled.")
+            }
+        }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            GalleryTopAppBar(
+                title = task.label,
+                // No left action (Back button removed)
+            )
+        },
+        floatingActionButton = {
+            // A floating action button to show "import model" bottom sheet.
+            val cdImportModelFab = stringResource(R.string.cd_import_model_button)
+            SmallFloatingActionButton(
+                onClick = { showImportModelSheet = true },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.semantics { contentDescription = cdImportModelFab },
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
+    ) { innerPadding ->
+        ModelList(
+            task = task,
+            modelManagerViewModel = viewModel,
+            contentPadding = innerPadding,
+            onModelClicked = onModelClicked,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+
+    // Import model bottom sheet.
+    if (showImportModelSheet) {
+        ModalBottomSheet(onDismissRequest = { showImportModelSheet = false }, sheetState = sheetState) {
+            Text(
+                "Import model",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(vertical = 4.dp, horizontal = 16.dp),
+            )
+            val cbImportFromLocalFile = stringResource(R.string.cd_import_model_from_local_file_button)
+            Box(
+                modifier =
+                Modifier.clickable {
+                    coroutineScope.launch {
+                        // Give it sometime to show the click effect.
+                        delay(200)
+                        showImportModelSheet = false
+
+                        // Show file picker.
+                        val intent =
+                            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "*/*"
+                                // Single select.
+                                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
+                            }
+                        filePickerLauncher.launch(intent)
+                    }
+                }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = cbImportFromLocalFile
+                    }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.NoteAdd, contentDescription = null)
+                    Text("From local model file", modifier = Modifier.clearAndSetSemantics {})
+                }
+            }
+        }
+    }
+
+    // Import dialog
+    if (showImportDialog) {
+        selectedLocalModelFileUri.value?.let { uri ->
+            ModelImportDialog(
+                uri = uri,
+                onDismiss = { showImportDialog = false },
+                onDone = { info ->
+                    selectedImportedModelInfo.value = info
+                    showImportDialog = false
+                    showImportingDialog = true
+                },
+            )
+        }
+    }
+
+    // Importing in progress dialog.
+    if (showImportingDialog) {
+        selectedLocalModelFileUri.value?.let { uri ->
+            selectedImportedModelInfo.value?.let { info ->
+                ModelImportingDialog(
+                    uri = uri,
+                    info = info,
+                    onDismiss = { showImportingDialog = false },
+                    onDone = {
+                        viewModel.addImportedLlmModel(info = it)
+                        showImportingDialog = false
+
+                        // Show a snack bar for successful import.
+                        coroutineScope.launch { snackbarHostState.showSnackbar("Model imported successfully") }
+                    },
+                )
+            }
+        }
+    }
+
+    // Alert dialog for unsupported file type.
+    if (showUnsupportedFileTypeDialog) {
+        AlertDialog(
+            icon = {
+                Icon(
+                    Icons.Rounded.Error,
+                    contentDescription = stringResource(R.string.cd_error),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            },
+            onDismissRequest = { showUnsupportedFileTypeDialog = false },
+            title = { Text("Unsupported file type") },
+            text = { Text("Only \".task\" or \".litertlm\" file type is supported.") },
+            confirmButton = {
+                Button(onClick = { showUnsupportedFileTypeDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+        )
+    }
+
+    // Alert dialog for unsupported web model.
+    if (showUnsupportedWebModelDialog) {
+        AlertDialog(
+            icon = {
+                Icon(
+                    Icons.Rounded.Error,
+                    contentDescription = stringResource(R.string.cd_error),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            },
+            onDismissRequest = { showUnsupportedWebModelDialog = false },
+            title = { Text("Unsupported model type") },
+            text = { Text("Looks like the model is a web-only model and is not supported by the app.") },
+            confirmButton = {
+                Button(onClick = { showUnsupportedWebModelDialog = false }) {
+                    Text(stringResource(R.string.ok))
+                }
+            },
+        )
+    }
+}
+
+// Helper function copied from HomeScreen.kt
+private fun getFileName(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        try {
+            if (cursor != null && cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) {
+                    result = cursor.getString(index)
+                }
+            }
+        } finally {
+            cursor?.close()
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/')
+        if (cut != null && cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result
+}

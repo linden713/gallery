@@ -143,6 +143,17 @@ fun GalleryNavHost(
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
+  // Automatically open AI Chat task on startup
+  LaunchedEffect(Unit) {
+    val chatTask = modelManagerViewModel.uiState.value.tasks.find { 
+      it.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_CHAT 
+    }
+    if (chatTask != null) {
+      pickedTask = chatTask
+      showModelManager = true
+    }
+  }
+
   HomeScreen(
     modelManagerViewModel = modelManagerViewModel,
     tosViewModel = hiltViewModel(),
@@ -161,14 +172,24 @@ fun GalleryNavHost(
   ) {
     val curPickedTask = pickedTask
     if (curPickedTask != null) {
-      ModelManager(
-        viewModel = modelManagerViewModel,
-        task = curPickedTask,
-        onModelClicked = { model ->
-          navController.navigate("$ROUTE_MODEL/${curPickedTask.id}/${model.name}")
-        },
-        navigateUp = { showModelManager = false },
-      )
+      if (curPickedTask.id == com.google.ai.edge.gallery.data.BuiltInTaskId.LLM_CHAT) {
+        com.google.ai.edge.gallery.ui.modelmanager.DefaultModelManager(
+          viewModel = modelManagerViewModel,
+          task = curPickedTask,
+          onModelClicked = { model ->
+            navController.navigate("$ROUTE_MODEL/${curPickedTask.id}/${model.name}")
+          },
+        )
+      } else {
+        ModelManager(
+          viewModel = modelManagerViewModel,
+          task = curPickedTask,
+          onModelClicked = { model ->
+            navController.navigate("$ROUTE_MODEL/${curPickedTask.id}/${model.name}")
+          },
+          navigateUp = { showModelManager = false },
+        )
+      }
     }
   }
 
