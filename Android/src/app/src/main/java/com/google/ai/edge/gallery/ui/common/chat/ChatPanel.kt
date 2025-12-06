@@ -103,6 +103,8 @@ import com.google.ai.edge.gallery.ui.common.ErrorDialog
 import com.google.ai.edge.gallery.ui.modelmanager.ModelInitializationStatusType
 import com.google.ai.edge.gallery.ui.modelmanager.ModelManagerViewModel
 import com.google.ai.edge.gallery.ui.theme.customColors
+import com.google.ai.edge.gallery.ui.llmsingleturn.PromptTemplateType
+import com.google.ai.edge.gallery.data.PromptTemplate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -602,15 +604,18 @@ fun ChatPanel(
           // Hide software keyboard.
           focusManager.clearFocus()
         },
-        onOpenPromptTemplatesClicked = {
+          onOpenPromptTemplatesClicked = {
+          val templates =
+            if (selectedModel.llmPromptTemplates.isNotEmpty()) {
+              selectedModel.llmPromptTemplates
+            } else {
+              PromptTemplateType.FREE_FORM.examplePrompts.map {
+                PromptTemplate(title = it, description = "", prompt = it)
+              }
+            }
           onSendMessage(
             selectedModel,
-            listOf(
-              ChatMessagePromptTemplates(
-                templates = selectedModel.llmPromptTemplates,
-                showMakeYourOwn = false,
-              )
-            ),
+            listOf(ChatMessagePromptTemplates(templates = templates, showMakeYourOwn = false)),
           )
         },
         onStopButtonClicked = onStopButtonClicked,
@@ -621,7 +626,7 @@ fun ChatPanel(
           }
         },
         onAmplitudeChanged = { curAmplitude = it },
-        showPromptTemplatesInMenu = false,
+        showPromptTemplatesInMenu = true,
         showImagePickerInMenu =
           selectedModel.llmSupportImage &&
             (task.id === BuiltInTaskId.LLM_ASK_IMAGE || task.id === BuiltInTaskId.LLM_CHAT),

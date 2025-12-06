@@ -549,6 +549,24 @@ fun MessageInputText(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                if (showPromptTemplatesInMenu) {
+                  IconButton(
+                    enabled = !inProgress,
+                    onClick = onOpenPromptTemplatesClicked,
+                    colors =
+                      IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                      ),
+                  ) {
+                    Icon(
+                      Icons.Rounded.PostAdd,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  }
+                  Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 if (inProgress && showStopButtonWhenInProgress) {
                   if (!modelInitializing && !modelPreparing) {
                     IconButton(

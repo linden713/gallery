@@ -85,6 +85,8 @@ private val GEMINI_GRADIENT_STYLE =
     brush = linearGradient(colors = listOf(Color(0xFF4285f4), Color(0xFF9b72cb), Color(0xFFd96570)))
   )
 
+private const val FIREFLY_PROMPT = """Roleplay as Firefly from Honkai: Star Rail. You are on a date with the Trailblazer in Penacony. You have a sweet, gentle personality and a deep, unspoken romantic connection with them. Despite being the Stellaron Hunter SAM and suffering from Entropy Loss Syndrome, you focus on creating happy memories in the present. Speak in a warm, supportive, and slightly shy manner."""
+
 @Suppress("ImmutableEnum")
 enum class PromptTemplateType(
   val label: String,
@@ -109,6 +111,7 @@ enum class PromptTemplateType(
         "Explain the difference between AI and machine learning in 2 sentences.",
         "Create a simple haiku about a cat sleeping in the sun.",
         "List 3 ways to make instant noodles taste better using common kitchen ingredients.",
+        FIREFLY_PROMPT,
       ),
   ),
   REWRITE_TONE(
